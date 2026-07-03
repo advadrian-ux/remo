@@ -3,7 +3,7 @@
 // depende del momento en que se pulsa dentro del ciclo de recuperación.
 import * as THREE from 'three';
 import { createWater } from './water.js';
-import { createSky, buildEnvironment } from './environment.js';
+import { createSky, buildEnvironment, resolveHarborCollision } from './environment.js';
 import { Boat } from './boat.js';
 import { WaterEffects } from './effects.js';
 
@@ -40,6 +40,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -50,7 +52,16 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const sunDir = new THREE.Vector3(0.45, 0.55, -0.75).normalize();
 const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
 sun.position.copy(sunDir).multiplyScalar(300);
-scene.add(sun);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -70;
+sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 70;
+sun.shadow.camera.bottom = -70;
+sun.shadow.camera.near = 50;
+sun.shadow.camera.far = 650;
+sun.shadow.bias = -0.0004;
+scene.add(sun, sun.target);
 scene.add(new THREE.HemisphereLight(0xbfe0f5, 0x35586b, 0.9));
 
 const sky = createSky(sunDir);
@@ -84,6 +95,8 @@ const game = {
   tRec: 0,               // s desde el final de la pasada
   power: 0,              // potencia de la palada en curso
   v: 0,                  // m/s
+  heading: 0,            // rad; 0 = hacia la bocana (-Z)
+  steer: 0,              // -1 (estribor) … +1 (babor)
   dist: 0,
   time: 0,               // s de sesión
   strokes: 0,
@@ -92,6 +105,7 @@ const game = {
   scores: [],            // últimas paladas para la nota de técnica
   camMode: 0,
   sprayTimer: 0,
+  bumpCooldown: 0,       // anti-spam del aviso de choque
 };
 
 function resetGame() {
@@ -102,6 +116,8 @@ function resetGame() {
   game.tRec = 0;
   game.power = 0;
   game.v = 0;
+  game.heading = 0;
+  game.steer = 0;
   game.dist = 0;
   game.time = 0;
   game.strokes = 0;
@@ -109,12 +125,15 @@ function resetGame() {
   game.spm = 0;
   game.scores.length = 0;
   boat.group.position.set(0, 0, 0);
+  boat.heading = 0;
   ui.overlayStart.style.display = 'none';
   ui.overlayEnd.style.display = 'none';
   ui.hud.style.display = 'grid';
   ui.topRight.style.display = 'block';
   ui.gaugeWrap.style.display = 'flex';
   ui.btnRow.style.display = 'flex';
+  ui.btnLeft.style.display = 'flex';
+  ui.btnRight.style.display = 'flex';
   ui.pausedTag.style.display = 'none';
 }
 
@@ -168,8 +187,8 @@ function row() {
 const ui = {};
 for (const id of ['hud', 'topRight', 'speedVal', 'splitVal', 'spmVal', 'distVal',
   'techVal', 'camLabel', 'sndLabel', 'gaugeWrap', 'gauge', 'gaugeCursor',
-  'feedback', 'btnRow', 'overlayStart', 'overlayEnd', 'endStats',
-  'btnStart', 'btnRestart', 'pausedTag']) {
+  'feedback', 'btnRow', 'btnLeft', 'btnRight', 'overlayStart', 'overlayEnd',
+  'endStats', 'btnStart', 'btnRestart', 'pausedTag']) {
   ui[id] = document.getElementById(id);
 }
 
@@ -235,6 +254,8 @@ function finishSession() {
     <span>Técnica</span><span class="v">${Math.round(avg)} %</span>`;
   ui.overlayEnd.style.display = 'flex';
   ui.btnRow.style.display = 'none';
+  ui.btnLeft.style.display = 'none';
+  ui.btnRight.style.display = 'none';
   ui.gaugeWrap.style.display = 'none';
 }
 
@@ -301,16 +322,34 @@ const CAM_MODES = [
   { label: 'seguimiento', offset: new THREE.Vector3(0, 3.6, 10), look: new THREE.Vector3(0, 0.8, -10) },
   { label: 'lateral', offset: new THREE.Vector3(11, 2.4, -1.5), look: new THREE.Vector3(0, 0.5, -1) },
   { label: 'remero', offset: new THREE.Vector3(0, 1.5, -0.6), look: new THREE.Vector3(0, 1.1, 40) },
+  { label: 'panorámica', orbital: true },
 ];
 const _camTarget = new THREE.Vector3();
 const _lookTarget = new THREE.Vector3();
 
 camera.position.set(0, 3.6, 10);
 
-function updateCamera(dt) {
+// Gira un desplazamiento local del bote al mundo según el rumbo.
+function headingOffset(out, off, th) {
+  const c = Math.cos(th), s = Math.sin(th);
+  return out.set(off.x * c + off.z * s, off.y, -off.x * s + off.z * c);
+}
+
+function updateCamera(dt, t) {
   const mode = CAM_MODES[game.camMode];
-  _camTarget.copy(mode.offset).add(boat.group.position);
-  _lookTarget.copy(mode.look).add(boat.group.position);
+  const bp = boat.group.position;
+  if (mode.orbital) {
+    // Órbita lenta alrededor del bote: enseña todo el puerto.
+    const a = t * 0.14;
+    _camTarget.set(bp.x + Math.cos(a) * 16, bp.y + 5.5, bp.z + Math.sin(a) * 16);
+    _lookTarget.set(bp.x, bp.y + 1, bp.z);
+    const k = 1 - Math.exp(-2.5 * dt);
+    camera.position.lerp(_camTarget, k);
+    camera.lookAt(_lookTarget);
+    return;
+  }
+  headingOffset(_camTarget, mode.offset, game.heading).add(bp);
+  headingOffset(_lookTarget, mode.look, game.heading).add(bp);
   const k = 1 - Math.exp(-4.5 * dt);
   camera.position.lerp(_camTarget, game.camMode === 2 ? 1 : k);
   camera.lookAt(_lookTarget);
@@ -326,7 +365,14 @@ function startSession() {
   resetGame();
 }
 
+// Timón: teclas mantenidas.
+const steerKeys = { left: false, right: false };
+function applySteerKeys() {
+  game.steer = (steerKeys.left ? 1 : 0) - (steerKeys.right ? 1 : 0);
+}
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') { steerKeys.left = true; applySteerKeys(); e.preventDefault(); return; }
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') { steerKeys.right = true; applySteerKeys(); e.preventDefault(); return; }
   if (e.code === 'Space') {
     e.preventDefault();
     if (e.repeat) return; // ignora la repetición automática de la tecla
@@ -346,6 +392,22 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyR' && game.screen !== 'menu') startSession();
 });
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') { steerKeys.left = false; applySteerKeys(); }
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') { steerKeys.right = false; applySteerKeys(); }
+});
+
+// Timón: botones táctiles.
+function bindSteerButton(el, dir) {
+  const on = (e) => { e.preventDefault(); e.stopPropagation(); if (dir > 0) steerKeys.left = true; else steerKeys.right = true; applySteerKeys(); };
+  const off = () => { if (dir > 0) steerKeys.left = false; else steerKeys.right = false; applySteerKeys(); };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointerleave', off);
+  el.addEventListener('pointercancel', off);
+}
+bindSteerButton(ui.btnLeft, 1);
+bindSteerButton(ui.btnRight, -1);
 
 renderer.domElement.addEventListener('pointerdown', () => {
   if (game.screen === 'running') row();
@@ -410,8 +472,29 @@ function animate(nowMs) {
     // Resistencia del agua (viscosa + de forma) e integración.
     const drag = DRAG_K1 * game.v + DRAG_K2 * game.v * game.v;
     game.v = Math.max(game.v - (drag / BOAT_MASS) * dt, 0);
-    boat.group.position.z -= game.v * dt;
+
+    // Timón: gira mejor con arrancada; girar también frena un poco.
+    const yawRate = game.steer * 0.38 * THREE.MathUtils.clamp(game.v / 1.6, 0.22, 1);
+    game.heading += yawRate * dt;
+    if (game.steer !== 0) game.v *= 1 - 0.12 * dt;
+    boat.heading = game.heading;
+    boat.turnRoll = THREE.MathUtils.lerp(boat.turnRoll, yawRate * game.v * 0.02, 1 - Math.exp(-5 * dt));
+
+    const fwdX = -Math.sin(game.heading), fwdZ = -Math.cos(game.heading);
+    boat.group.position.x += fwdX * game.v * dt;
+    boat.group.position.z += fwdZ * game.v * dt;
     game.dist += game.v * dt;
+
+    // Choques contra muelles, buques y escolleras.
+    game.bumpCooldown -= dt;
+    if (resolveHarborCollision(boat.group.position, 4)) {
+      game.v *= Math.max(1 - 3 * dt, 0.4);
+      if (game.bumpCooldown <= 0) {
+        game.bumpCooldown = 2.5;
+        showFeedback('¡Cuidado con el muelle!', '#ff6b5e');
+        audio.splash(0.5);
+      }
+    }
 
     if (game.dist >= DIST_GOAL) finishSession();
   }
@@ -429,15 +512,22 @@ function animate(nowMs) {
   }
   boat.update(t, phase, idle, driveKick);
 
-  // Estela.
-  _stern.set(0, 0, 4.1).add(boat.group.position);
+  // Estela (popa según el rumbo).
+  _stern.set(
+    boat.group.position.x + Math.sin(game.heading) * 4.1,
+    0,
+    boat.group.position.z + Math.cos(game.heading) * 4.1
+  );
   effects.updateWake(dt, _stern, game.v);
   effects.step(dt);
 
-  // El cielo sigue al bote; el agua (4 km) ya cubre todo el recorrido.
+  // El cielo y el sol (con su cámara de sombras) siguen al bote.
+  sky.position.x = boat.group.position.x;
   sky.position.z = boat.group.position.z;
+  sun.position.copy(sunDir).multiplyScalar(300).add(boat.group.position);
+  sun.target.position.copy(boat.group.position);
 
-  updateCamera(dt);
+  updateCamera(dt, t);
   if (game.screen !== 'menu') updateHUD();
   renderer.render(scene, camera);
 }

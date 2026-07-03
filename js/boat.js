@@ -51,6 +51,9 @@ function makeOar(side, materials) {
 export class Boat {
   constructor() {
     this.group = new THREE.Group();
+    // Rumbo (Y) primero, luego cabeceo (X) y balanceo (Z).
+    this.group.rotation.order = 'YXZ';
+    this.heading = 0; // rad; 0 = hacia -Z
 
     const hullMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.35, metalness: 0.05 });
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x24313a, roughness: 0.6 });
@@ -127,14 +130,20 @@ export class Boat {
     footplate.rotation.x = -0.5;
     this.rower.add(footplate);
     this.footPos = { L: new THREE.Vector3(-0.12, 0.16, 0.76), R: new THREE.Vector3(0.12, 0.16, 0.76) };
+    this.turnRoll = 0; // escora en los giros, la fija el bucle principal
 
-    // Sombra falsa sobre el agua.
+    // Sombra falsa sobre el agua (la geometría ya está tumbada para
+    // poder girar la malla con el rumbo).
     const shadowTex = makeShadowTexture();
+    const shadowGeo = new THREE.PlaneGeometry(3.4, 10);
+    shadowGeo.rotateX(-Math.PI / 2);
     this.shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.4, 10),
+      shadowGeo,
       new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.28, depthWrite: false })
     );
-    this.shadow.rotation.x = -Math.PI / 2;
+
+    // El bote y el remero proyectan sombra real.
+    this.group.traverse((o) => { if (o.isMesh) o.castShadow = true; });
 
     this.pose = this.oarPose(0, true);
   }
@@ -213,18 +222,25 @@ export class Boat {
       orientBetween(this.limbs[s === 1 ? 'armR' : 'armL'], _b, _a);
     }
 
-    // Flotación: muestreo de la altura del agua en proa/popa y bandas.
+    // Flotación: muestreo de la altura del agua en proa/popa y bandas,
+    // según el rumbo actual del bote.
     const x = this.group.position.x;
     const z = this.group.position.z;
-    const hB = waterHeight(x, z - HULL_LEN / 2, t);
-    const hS = waterHeight(x, z + HULL_LEN / 2, t);
-    const hL = waterHeight(x - 0.9, z, t);
-    const hR = waterHeight(x + 0.9, z, t);
+    const th = this.heading;
+    const fx = -Math.sin(th), fz = -Math.cos(th); // proa
+    const rx = Math.cos(th), rz = -Math.sin(th);  // estribor
+    const hl = HULL_LEN / 2;
+    const hB = waterHeight(x + fx * hl, z + fz * hl, t);
+    const hS = waterHeight(x - fx * hl, z - fz * hl, t);
+    const hL = waterHeight(x - rx * 0.9, z - rz * 0.9, t);
+    const hR = waterHeight(x + rx * 0.9, z + rz * 0.9, t);
     this.group.position.y = (hB + hS) / 2 + 0.03;
+    this.group.rotation.y = th;
     this.group.rotation.x = (hS - hB) / HULL_LEN + driveKick * -0.012;
-    this.group.rotation.z = (hL - hR) / 1.8 + Math.sin(t * 1.3) * 0.006;
+    this.group.rotation.z = (hL - hR) / 1.8 + Math.sin(t * 1.3) * 0.006 + this.turnRoll;
 
     this.shadow.position.set(x, 0.02 + waterHeight(x, z, t) * 0.3, z);
+    this.shadow.rotation.y = th;
   }
 
   // Posición mundial de la punta de una pala (para salpicaduras).

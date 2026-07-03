@@ -69,12 +69,17 @@ const FRAG = /* glsl */ `
 
   void main() {
     vec2 p = vWorldPos.xz;
+    float dist = length(cameraPosition - vWorldPos);
+
     float e = 0.18;
     float hx1 = hTotal(p + vec2(e, 0.0));
     float hx0 = hTotal(p - vec2(e, 0.0));
     float hz1 = hTotal(p + vec2(0.0, e));
     float hz0 = hTotal(p - vec2(0.0, e));
     vec3 n = normalize(vec3(hx0 - hx1, 2.0 * e, hz0 - hz1));
+    // Aplana la normal con la distancia para evitar moiré y ruido lejano.
+    float flat_ = mix(1.0, 0.12, smoothstep(35.0, 450.0, dist));
+    n = normalize(mix(vec3(0.0, 1.0, 0.0), n, flat_));
 
     vec3 V = normalize(cameraPosition - vWorldPos);
     float ndv = max(dot(n, V), 0.0);
@@ -84,10 +89,13 @@ const FRAG = /* glsl */ `
     vec3 skyRef = mix(uHorizonColor, uSkyColor, clamp(R.y * 1.8, 0.0, 1.0));
     vec3 col = mix(uWaterColor, skyRef, fresnel);
 
+    // Variación suave de tono a gran escala (corrientes, fondo).
+    col *= 1.0 + 0.05 * sin(p.x * 0.013 + p.y * 0.019)
+               + 0.03 * sin(p.x * 0.031 - p.y * 0.011);
+
     float rs = max(dot(R, uSunDir), 0.0);
     col += uSunColor * (pow(rs, 600.0) * 3.0 + pow(rs, 48.0) * 0.22);
 
-    float dist = length(cameraPosition - vWorldPos);
     col = mix(col, uFogColor, smoothstep(uFogNear, uFogFar, dist));
 
     gl_FragColor = vec4(col, 1.0);

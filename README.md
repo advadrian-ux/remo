@@ -11,6 +11,11 @@ Valencia, construido con **Three.js + WebGL**. Pensado para practicar la
 - **ESPACIO** (o tocar la pantalla / botón REMAR): dar una palada.
 - El control es de **una sola tecla**: cada pulsación ejecuta el ciclo
   completo de la palada (ataque → pasada → salida → recuperación).
+- **◀ ▶** (o **A / D**, o los botones táctiles): timón. Puedes navegar
+  libremente por toda la dársena y verla desde cualquier ángulo: la
+  Marina con sus pantalanes, el Veles e Vents, el Edificio del Reloj,
+  el ferry, la terminal de contenedores con su buque y la bocana con
+  los faros. Los muelles, buques y escolleras tienen colisión.
 - La clave es el **ritmo**: tras cada pasada, un cursor recorre el medidor
   inferior. Pulsa cuando esté en la **zona verde** para una palada
   perfecta:
@@ -22,7 +27,8 @@ Valencia, construido con **Three.js + WebGL**. Pensado para practicar la
 | Tecla | Acción |
 | ----- | ------ |
 | `ESPACIO` | Remar |
-| `C` | Cambiar cámara (seguimiento / lateral / remero) |
+| `◀` `▶` / `A` `D` | Timón |
+| `C` | Cambiar cámara (seguimiento / lateral / remero / panorámica) |
 | `M` | Activar/silenciar sonido |
 | `P` | Pausa |
 | `R` | Reiniciar sesión |
@@ -69,13 +75,18 @@ Y abre <http://localhost:8000>.
 ## Gráficos
 
 - **Agua**: shader propio con oleaje suave por vértice y normales
-  procedurales de alta frecuencia (fresnel, reflejo del cielo y brillo
-  solar). La misma función de altura se evalúa en JS para que el bote,
-  las boyas y los veleros floten de forma coherente.
-- **Entorno del puerto** (estilizado, 100 % procedural, sin texturas
-  externas): grúas pórtico azules con contenedores, edificio *Veles e
-  Vents*, tinglados, palmeras, veleros amarrados, escolleras con faros
-  rojo/verde en la bocana, silueta de la ciudad y gaviotas.
+  procedurales de alta frecuencia (fresnel, reflejo del cielo, brillo
+  solar y suavizado con la distancia para evitar moiré). La misma
+  función de altura se evalúa en JS para que el bote, las boyas y los
+  veleros floten de forma coherente.
+- **Entorno del puerto** (estilizado, 100 % procedural, con texturas
+  generadas en canvas: hormigón, chapa corrugada, fachadas, madera…):
+  dársena cerrada navegable con marina y pantalanes, *Veles e Vents*,
+  *Edificio del Reloj*, tinglados, silos, ferry, terminal de
+  contenedores con buque atracado y grúas pórtico, escolleras
+  convergentes con faros rojo/verde, ciudad al norte y gaviotas.
+- **Iluminación**: sol direccional con sombras (PCF suave) que siguen
+  al bote, tone mapping ACES y niebla atmosférica.
 - **Efectos**: salpicadura y rocío de las palas, estela de espuma,
   sonido procedural de agua y paladas (WebAudio, sin ficheros).
 

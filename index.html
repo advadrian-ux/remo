@@ -112,6 +112,23 @@
   }
   #btnRow:active { transform: scale(0.93); }
 
+  .btnSteer {
+    position: fixed; bottom: 84px;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.45);
+    background: radial-gradient(circle at 35% 30%, rgba(90,110,130,0.9), rgba(30,45,60,0.9));
+    color: #fff; font-size: 22px; font-weight: 800;
+    display: none;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btnSteer:active { transform: scale(0.92); }
+  #btnLeft { left: 22px; }
+  #btnRight { left: 100px; }
+
   /* ---- Overlays ---- */
   .overlay {
     position: fixed; inset: 0;
@@ -185,6 +202,8 @@
 <div id="feedback"></div>
 <div id="pausedTag">PAUSA</div>
 <button id="btnRow">REMAR</button>
+<button id="btnLeft" class="btnSteer">◀</button>
+<button id="btnRight" class="btnSteer">▶</button>
 
 <div class="overlay" id="overlayStart">
   <div class="card panel">
@@ -196,8 +215,11 @@
        medidor inferior. Pulsa cuando esté en la <b>zona verde</b> para una
        palada perfecta. Demasiado pronto frenas el barco; demasiado tarde
        pierdes el deslizamiento.</p>
-    <p>Objetivo: completa <b>1000 m</b> con la mejor técnica posible.</p>
-    <div class="keys">ESPACIO remar · C cámara · M sonido · P pausa · R reiniciar</div>
+    <p>Gobierna con <b>◀ ▶</b> (o <b>A / D</b>) y explora el puerto: la
+       Marina y el Veles e Vents, el Edificio del Reloj, el ferry, las grúas
+       con el buque portacontenedores y la bocana con sus faros.</p>
+    <p>Objetivo: rema <b>1000 m</b> con la mejor técnica posible.</p>
+    <div class="keys">ESPACIO remar · ◀ ▶ / A D timón · C cámara · M sonido · P pausa · R reiniciar</div>
     <button id="btnStart">Comenzar</button>
   </div>
 </div>
