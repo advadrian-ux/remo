@@ -67,6 +67,16 @@ scene.add(new THREE.HemisphereLight(0xbfe0f5, 0x35586b, 0.9));
 const sky = createSky(sunDir);
 scene.add(sky);
 
+// Entorno de iluminación PBR a partir del propio cielo: da reflejos
+// creíbles a los materiales estándar (casco, palas…).
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.add(createSky(sunDir));
+  scene.environment = pmrem.fromScene(envScene, 0.05).texture;
+  pmrem.dispose();
+}
+
 const water = createWater(scene.fog, sunDir);
 scene.add(water);
 
@@ -431,6 +441,7 @@ window.addEventListener('resize', () => {
 /* ------------------------------------------------------------------ */
 
 const _stern = new THREE.Vector3();
+const _bow = new THREE.Vector3();
 let lastT = performance.now();
 
 function animate(nowMs) {
@@ -440,6 +451,7 @@ function animate(nowMs) {
   const t = nowMs / 1000;
 
   water.updateTime(t);
+  sky.updateTime(t);
   for (const u of updatables) u.update(t);
 
   const running = game.screen === 'running' && !game.paused;
@@ -512,13 +524,19 @@ function animate(nowMs) {
   }
   boat.update(t, phase, idle, driveKick);
 
-  // Estela (popa según el rumbo).
+  // Estela (popa según el rumbo) y espuma de proa.
   _stern.set(
     boat.group.position.x + Math.sin(game.heading) * 4.1,
     0,
     boat.group.position.z + Math.cos(game.heading) * 4.1
   );
   effects.updateWake(dt, _stern, game.v);
+  _bow.set(
+    boat.group.position.x - Math.sin(game.heading) * 3.9,
+    0,
+    boat.group.position.z - Math.cos(game.heading) * 3.9
+  );
+  effects.updateBow(dt, _bow, game.v);
   effects.step(dt);
 
   // El cielo y el sol (con su cámara de sombras) siguen al bote.
@@ -529,6 +547,10 @@ function animate(nowMs) {
 
   updateCamera(dt, t);
   if (game.screen !== 'menu') updateHUD();
+
+  // Pase de reflexión planar del agua y render principal.
+  camera.updateMatrixWorld();
+  water.renderReflection(renderer, scene, camera, [boat.shadow]);
   renderer.render(scene, camera);
 }
 

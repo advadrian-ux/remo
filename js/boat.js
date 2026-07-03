@@ -55,19 +55,40 @@ export class Boat {
     this.group.rotation.order = 'YXZ';
     this.heading = 0; // rad; 0 = hacia -Z
 
-    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.35, metalness: 0.05 });
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.18, metalness: 0.05 });
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x24313a, roughness: 0.6 });
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xc98d68, roughness: 0.7 });
     const kitMat = new THREE.MeshStandardMaterial({ color: 0xdd5522, roughness: 0.6 });   // equipación naranja
     const shaftMat = new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.5 });
     const bladeMat = new THREE.MeshStandardMaterial({ color: 0xf07818, roughness: 0.4 }); // palas naranja Valencia
 
-    // Casco: cápsula alargada y aplastada.
-    const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, HULL_LEN - 0.34, 6, 14), hullMat);
-    hull.geometry.rotateX(Math.PI / 2);
-    hull.scale.set(1.5, 0.7, 1);
-    hull.position.y = 0.06;
-    this.group.add(hull);
+    // Casco: huso de revolución (proa y popa afiladas, como un skiff real).
+    {
+      const pts = [];
+      const N = 22;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const r = Math.pow(Math.sin(t * Math.PI), 0.72);
+        pts.push(new THREE.Vector2(Math.max(r, 0.001), t * 2 - 1));
+      }
+      const geo = new THREE.LatheGeometry(pts, 18);
+      geo.rotateX(Math.PI / 2); // eje a lo largo de Z
+      const hull = new THREE.Mesh(geo, hullMat);
+      hull.scale.set(0.26, 0.15, HULL_LEN / 2);
+      hull.position.y = 0.06;
+      this.group.add(hull);
+      // Bola de proa reglamentaria.
+      const bowBall = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.5 })
+      );
+      bowBall.position.set(0, 0.07, -HULL_LEN / 2 - 0.02);
+      this.group.add(bowBall);
+      // Orza bajo la popa.
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.16, 0.22), hullMat);
+      fin.position.set(0, -0.12, 1.9);
+      this.group.add(fin);
+    }
 
     // Franja de cubierta y carril.
     const deck = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.025, 3.2), darkMat);

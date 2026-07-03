@@ -21,6 +21,7 @@ export function createSky(sunDir) {
       uZenith: { value: new THREE.Color(0x1a5cb8) },
       uHorizon: { value: new THREE.Color(0xcfe8f5) },
       uSunColor: { value: new THREE.Color(1.0, 0.93, 0.78) },
+      uTime: { value: 0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
@@ -35,7 +36,28 @@ export function createSky(sunDir) {
       uniform vec3 uZenith;
       uniform vec3 uHorizon;
       uniform vec3 uSunColor;
+      uniform float uTime;
       varying vec3 vDir;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x),
+                   mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+      }
+      float fbm(vec2 p) {
+        float v = 0.0, a = 0.5;
+        for (int i = 0; i < 5; i++) {
+          v += a * noise(p);
+          p = p * 2.03 + vec2(17.3, 9.1);
+          a *= 0.5;
+        }
+        return v;
+      }
+
       void main() {
         vec3 d = normalize(vDir);
         float h = max(d.y, 0.0);
@@ -44,13 +66,31 @@ export function createSky(sunDir) {
         col += uSunColor * smoothstep(0.9993, 0.9998, s) * 4.0; // disco solar
         col += uSunColor * pow(s, 320.0) * 0.7;                 // halo
         col += uSunColor * pow(s, 8.0) * 0.08;                  // bruma cálida
+
+        // Nubes: fbm proyectado sobre una capa alta que deriva con el viento.
+        if (d.y > 0.015) {
+          vec2 cuv = d.xz / (d.y + 0.18) * 1.35 + vec2(uTime * 0.006, uTime * 0.0023);
+          float base = fbm(cuv);
+          float cover = smoothstep(0.52, 0.78, base);
+          float wisps = smoothstep(0.38, 0.62, fbm(cuv * 3.1 + 40.0)) * 0.35;
+          float density = clamp(cover + wisps * cover, 0.0, 1.0);
+          density *= smoothstep(0.015, 0.12, d.y);          // se funden en el horizonte
+          // Iluminación: blancas hacia el sol, gris azulado en la base.
+          float lit = 0.65 + 0.35 * s;
+          vec3 cloudCol = mix(vec3(0.62, 0.67, 0.74), vec3(1.04, 1.02, 0.99), lit)
+                        * (0.72 + 0.28 * smoothstep(0.3, 0.9, base));
+          col = mix(col, cloudCol, density * 0.88);
+        }
+
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }
     `,
   });
-  return new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.updateTime = (t) => { mat.uniforms.uTime.value = t; };
+  return mesh;
 }
 
 /* ------------------------------------------------------------------ */
@@ -77,14 +117,33 @@ const TEX = {};
 
 function buildTextures() {
   // Hormigón/asfalto de explanada.
-  TEX.concrete = makeTex(256, 256, (g, w, h) => {
+  TEX.concrete = makeTex(512, 512, (g, w, h) => {
     g.fillStyle = '#a7a29a'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2600; i++) {
-      const v = 140 + Math.random() * 60;
+    for (let i = 0; i < 9000; i++) {
+      const v = 130 + Math.random() * 70;
       g.fillStyle = `rgba(${v},${v - 4},${v - 10},0.35)`;
       g.fillRect(Math.random() * w, Math.random() * h, 1.6, 1.6);
     }
-    g.strokeStyle = 'rgba(70,68,64,0.5)'; g.lineWidth = 2;
+    // Manchas de aceite y desgaste.
+    for (let i = 0; i < 18; i++) {
+      const x = Math.random() * w, y = Math.random() * h, r = 8 + Math.random() * 30;
+      const grad = g.createRadialGradient(x, y, 1, x, y, r);
+      grad.addColorStop(0, 'rgba(60,58,54,0.22)');
+      grad.addColorStop(1, 'rgba(60,58,54,0)');
+      g.fillStyle = grad; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+    // Grietas finas.
+    g.strokeStyle = 'rgba(75,72,66,0.5)'; g.lineWidth = 1;
+    for (let i = 0; i < 10; i++) {
+      let x = Math.random() * w, y = Math.random() * h;
+      g.beginPath(); g.moveTo(x, y);
+      for (let s = 0; s < 8; s++) {
+        x += (Math.random() - 0.5) * 34; y += (Math.random() - 0.5) * 34;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    g.strokeStyle = 'rgba(70,68,64,0.55)'; g.lineWidth = 3;
     g.strokeRect(0, 0, w, h); // junta de losas
   });
 
@@ -110,17 +169,24 @@ function buildTextures() {
   });
 
   // Chapa corrugada (contenedores): blanca, se tiñe con el color de instancia.
-  TEX.corrugated = makeTex(128, 64, (g, w, h) => {
-    for (let x = 0; x < w; x += 8) {
-      const grad = g.createLinearGradient(x, 0, x + 8, 0);
+  TEX.corrugated = makeTex(256, 128, (g, w, h) => {
+    for (let x = 0; x < w; x += 16) {
+      const grad = g.createLinearGradient(x, 0, x + 16, 0);
       grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.45, '#c9c9c9');
+      grad.addColorStop(0.45, '#bdbdbd');
       grad.addColorStop(0.7, '#f2f2f2');
       grad.addColorStop(1, '#ffffff');
-      g.fillStyle = grad; g.fillRect(x, 0, 8, h);
+      g.fillStyle = grad; g.fillRect(x, 0, 16, h);
     }
-    g.fillStyle = 'rgba(90,90,90,0.5)';
-    g.fillRect(0, 0, 3, h); g.fillRect(w - 3, 0, 3, h);
+    // Desgaste y arañazos.
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = `rgba(70,60,50,${0.05 + Math.random() * 0.12})`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 10, 1.5);
+    }
+    g.fillStyle = 'rgba(80,80,80,0.55)';
+    g.fillRect(0, 0, 6, h); g.fillRect(w - 6, 0, 6, h); // esquineros
+    g.fillStyle = 'rgba(60,60,60,0.4)';
+    g.fillRect(0, 0, w, 5); g.fillRect(0, h - 5, w, 5);  // raíles
   });
 
   // Fachada de oficinas con ventanas.
@@ -135,33 +201,80 @@ function buildTextures() {
     }
   });
 
-  // Fachada residencial cálida.
-  TEX.facade = makeTex(128, 256, (g, w, h) => {
+  // Fachada residencial cálida con balcones y toldos.
+  TEX.facade = makeTex(256, 512, (g, w, h) => {
     g.fillStyle = '#cbb8a0'; g.fillRect(0, 0, w, h);
-    for (let y = 10; y < h - 12; y += 26) {
-      for (let x = 10; x < w - 12; x += 22) {
-        g.fillStyle = '#2e3c44';
-        g.fillRect(x, y, 12, 16);
-        g.fillStyle = 'rgba(255,255,255,0.55)';
-        g.fillRect(x - 2, y + 16, 16, 3); // balcón
+    for (let i = 0; i < 2200; i++) { // grano del enlucido
+      const v = Math.random() * 26;
+      g.fillStyle = `rgba(${170 - v},${152 - v},${128 - v},0.3)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+    }
+    for (let y = 18; y < h - 24; y += 52) {
+      for (let x = 18; x < w - 24; x += 44) {
+        // Recercado y ventana con visillo.
+        g.fillStyle = '#b5a288'; g.fillRect(x - 3, y - 3, 30, 38);
+        const win = g.createLinearGradient(x, y, x, y + 32);
+        win.addColorStop(0, '#3b4d57');
+        win.addColorStop(0.6, '#22303a');
+        win.addColorStop(1, '#17232b');
+        g.fillStyle = win; g.fillRect(x, y, 24, 32);
+        g.fillStyle = 'rgba(220,225,228,0.25)'; g.fillRect(x + 2, y + 2, 8, 12);
+        // Balcón con barandilla.
+        g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x - 4, y + 32, 32, 4);
+        g.strokeStyle = 'rgba(40,44,48,0.7)'; g.lineWidth = 1;
+        for (let b = 0; b <= 32; b += 4) {
+          g.beginPath(); g.moveTo(x - 4 + b, y + 22); g.lineTo(x - 4 + b, y + 32); g.stroke();
+        }
+        // Algún toldo.
+        if (Math.random() > 0.6) {
+          g.fillStyle = Math.random() > 0.5 ? '#7a9e6a' : '#a86f52';
+          g.fillRect(x - 3, y - 6, 30, 7);
+        }
       }
+    }
+    // Sombra de cornisa entre plantas.
+    for (let y = 54; y < h; y += 52) {
+      g.fillStyle = 'rgba(90,80,66,0.28)'; g.fillRect(0, y, w, 3);
     }
   });
 
-  // Casco del buque: chapa con línea de flotación.
-  TEX.shipHull = makeTex(512, 128, (g, w, h) => {
+  // Casco del buque: chapas, cuadernas marcadas, óxido y rótulo.
+  TEX.shipHull = makeTex(1024, 256, (g, w, h) => {
     g.fillStyle = '#6e1f18'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 900; i++) {
-      const v = Math.random() * 30;
-      g.fillStyle = `rgba(${60 + v},${20 + v * 0.4},${16 + v * 0.3},0.5)`;
-      g.fillRect(Math.random() * w, Math.random() * h, 3, 1.5);
+    for (let i = 0; i < 5200; i++) {
+      const v = Math.random() * 34;
+      g.fillStyle = `rgba(${58 + v},${20 + v * 0.4},${15 + v * 0.3},0.5)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 3.5, 1.6);
     }
-    for (let y = 20; y < h; y += 24) { // costuras de chapas
-      g.fillStyle = 'rgba(30,10,8,0.35)'; g.fillRect(0, y, w, 1.5);
+    for (let y = 34; y < h; y += 40) { // costuras horizontales
+      g.fillStyle = 'rgba(30,10,8,0.4)'; g.fillRect(0, y, w, 2);
     }
-    g.fillStyle = '#111418'; g.fillRect(0, 0, w, 14);          // franja superior
-    g.fillStyle = '#b8302a'; g.fillRect(0, h - 16, w, 16);     // obra viva
-    g.fillStyle = '#e8e4da'; g.fillRect(0, h - 18, w, 3);      // línea de flotación
+    for (let x = 0; x < w; x += 64) {  // juntas verticales de chapa
+      g.fillStyle = 'rgba(35,12,9,0.3)'; g.fillRect(x, 0, 1.6, h);
+    }
+    // Chorretones de óxido desde imbornales y portas.
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * w;
+      const y0 = 18 + Math.random() * 60;
+      const len = 30 + Math.random() * 120;
+      const grad = g.createLinearGradient(0, y0, 0, y0 + len);
+      grad.addColorStop(0, 'rgba(120,60,20,0.55)');
+      grad.addColorStop(1, 'rgba(90,45,15,0)');
+      g.fillStyle = grad;
+      g.fillRect(x, y0, 2.5 + Math.random() * 4, len);
+    }
+    g.fillStyle = '#111418'; g.fillRect(0, 0, w, 26);           // franja superior
+    g.fillStyle = '#8e2620'; g.fillRect(0, h - 40, w, 40);      // obra viva
+    for (let i = 0; i < 500; i++) {                             // caracolillo
+      g.fillStyle = `rgba(${140 + Math.random() * 40},${90 + Math.random() * 30},40,0.3)`;
+      g.fillRect(Math.random() * w, h - 40 + Math.random() * 40, 2.5, 2);
+    }
+    g.fillStyle = '#e8e4da'; g.fillRect(0, h - 44, w, 4);       // línea de flotación
+    // Rótulo y calados.
+    g.font = 'bold 34px Arial'; g.fillStyle = '#e8e4da';
+    g.fillText('TURIA EXPRESS', 60, 70);
+    g.font = '13px monospace';
+    for (let i = 0; i < 5; i++) g.fillText(String(6 + i), w - 40, h - 50 - i * 26);
   });
 
   // Reloj del Edificio del Reloj.
@@ -290,18 +403,39 @@ function makeClockBuilding() {
 
 function makePalm() {
   const g = new THREE.Group();
-  const trunk = cylinder(0.14, 0.24, 6.5, 6, 0x8a6d4b, 0, 3.25, 0, g);
-  trunk.rotation.z = (Math.random() - 0.5) * 0.14;
-  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f7a3d, side: THREE.DoubleSide });
-  for (let i = 0; i < 8; i++) {
-    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.55), leafMat);
-    leaf.position.set(0, 6.4, 0);
-    leaf.rotation.y = (i / 8) * Math.PI * 2;
-    leaf.rotateOnAxis(new THREE.Vector3(0, 0, 1), 0.55 + Math.random() * 0.35);
-    leaf.translateX(1.35);
+  // Tronco en dos tramos ligeramente curvado, con anillos.
+  const lean = (Math.random() - 0.5) * 0.2;
+  const t1 = cylinder(0.17, 0.26, 3.6, 7, 0x8a6d4b, 0, 1.8, 0, g);
+  t1.rotation.z = lean * 0.5;
+  const t2 = cylinder(0.13, 0.17, 3.4, 7, 0x957a56, Math.sin(lean) * 2.2, 4.9, 0, g);
+  t2.rotation.z = lean;
+  const topX = Math.sin(lean) * 3.2;
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2d7038, side: THREE.DoubleSide });
+  const leafMat2 = new THREE.MeshLambertMaterial({ color: 0x3d8a44, side: THREE.DoubleSide });
+  for (let i = 0; i < 11; i++) {
+    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.5, 4, 1), leafMat);
+    // Dobla la hoja hacia abajo en la punta.
+    const pos = leaf.geometry.attributes.position;
+    for (let v = 0; v < pos.count; v++) {
+      const x = pos.getX(v);
+      if (x > 0) pos.setY(v, pos.getY(v) - (x / 1.7) * (x / 1.7) * 0.55);
+    }
+    leaf.geometry.computeVertexNormals();
+    leaf.material = i % 2 ? leafMat : leafMat2;
+    leaf.position.set(topX, 6.5, 0);
+    leaf.rotation.y = (i / 11) * Math.PI * 2 + Math.random() * 0.4;
+    leaf.rotateOnAxis(new THREE.Vector3(0, 0, 1), 0.25 + Math.random() * 0.5);
+    leaf.translateX(1.5);
     leaf.castShadow = true;
     g.add(leaf);
   }
+  // Racimo de dátiles.
+  const dates = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 7, 6),
+    new THREE.MeshLambertMaterial({ color: 0xb07f2e })
+  );
+  dates.position.set(topX + 0.3, 6.2, 0.2);
+  g.add(dates);
   return g;
 }
 
@@ -325,7 +459,7 @@ function makeSailboat() {
 // Buque portacontenedores atracado en la terminal.
 function makeContainerShip() {
   const g = new THREE.Group();
-  const hullMat = new THREE.MeshLambertMaterial({ map: rep(TEX.shipHull, 6, 1) });
+  const hullMat = new THREE.MeshLambertMaterial({ map: TEX.shipHull });
   const hull = box(24, 13, 170, hullMat, 0, 5.5, 0, g);
   void hull;
   // Proa y popa afiladas (cajas giradas).
@@ -554,16 +688,19 @@ export function buildEnvironment(scene) {
   {
     const mats = [
       new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 2, 3) }),
-      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 2, 3) }),
-      new THREE.MeshLambertMaterial({ color: 0xb9c2c9 }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 1.5, 2) }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 3, 4), color: 0xbfc8d0 }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 2, 3), color: 0xd8c8b8 }),
     ];
     for (let i = 0; i < 30; i++) {
       const w = 14 + Math.random() * 18;
       const h = 16 + Math.random() * 52;
-      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mats[i % 3]);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mats[i % 4]);
       b.position.set(-380 + i * 26 + (Math.random() - 0.5) * 12, h / 2 + 3, 300 + Math.random() * 130);
       b.castShadow = false; b.receiveShadow = false;
       scene.add(b);
+      // Ático/casetón en algunos.
+      if (i % 3 === 0) box(w * 0.4, 4, w * 0.4, 0x9aa4ac, b.position.x, h + 5, b.position.z, scene, false);
     }
   }
 

@@ -74,13 +74,20 @@ Y abre <http://localhost:8000>.
 
 ## Gráficos
 
-- **Agua**: shader propio con oleaje suave por vértice y normales
-  procedurales de alta frecuencia (fresnel, reflejo del cielo, brillo
-  solar y suavizado con la distancia para evitar moiré). La misma
-  función de altura se evalúa en JS para que el bote, las boyas y los
-  veleros floten de forma coherente.
-- **Entorno del puerto** (estilizado, 100 % procedural, con texturas
-  generadas en canvas: hormigón, chapa corrugada, fachadas, madera…):
+- **Agua con reflexión planar real**: antes de cada fotograma se
+  renderiza la escena desde una cámara reflejada bajo el plano del agua
+  y el shader muestrea esa textura distorsionada por el oleaje — el
+  puerto, el cielo con nubes y el propio bote se reflejan de verdad.
+  Fresnel, absorción del agua, brillo solar y suavizado de normales con
+  la distancia (anti-moiré). La misma función de altura se evalúa en JS
+  para que el bote, las boyas y los veleros floten de forma coherente.
+- **Cielo con nubes procedurales** (fbm animado con deriva de viento) y
+  **entorno de iluminación PBR** (PMREM del propio cielo) para reflejos
+  creíbles en el casco y las palas.
+- **Entorno del puerto** (100 % procedural, con texturas detalladas
+  generadas en canvas: hormigón con grietas y manchas, cantiles con
+  marca de marea, chapa corrugada con desgaste, fachadas con balcones y
+  toldos, casco del buque con óxido, rótulo y línea de flotación…):
   dársena cerrada navegable con marina y pantalanes, *Veles e Vents*,
   *Edificio del Reloj*, tinglados, silos, ferry, terminal de
   contenedores con buque atracado y grúas pórtico, escolleras

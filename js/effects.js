@@ -136,6 +136,21 @@ export class WaterEffects {
     }
   }
 
+  // Rocío de proa al cortar el agua con arrancada.
+  updateBow(dt, bowPos, speed) {
+    this.bowTimer = (this.bowTimer ?? 0) - dt;
+    if (speed > 2.6 && this.bowTimer <= 0) {
+      this.bowTimer = 0.09;
+      for (const s of [-1, 1]) {
+        this.splash.spawn(
+          bowPos.x + s * 0.18, 0.06, bowPos.z,
+          s * (0.4 + Math.random() * 0.4), 0.35 + Math.random() * 0.4, (Math.random() - 0.5) * 0.3,
+          0.28 + Math.random() * 0.2, 0.05 + Math.random() * 0.05
+        );
+      }
+    }
+  }
+
   step(dt) {
     this.splash.step(dt, -5.5, 0.985);
     this.foam.step(dt, 0, 1);
