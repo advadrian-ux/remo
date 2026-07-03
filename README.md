@@ -29,8 +29,20 @@ Valencia, construido con **Three.js + WebGL**. Pensado para practicar la
 
 ## Ejecutar en local
 
-Es una web estática con módulos ES, así que basta cualquier servidor
-estático (no funciona abriendo `index.html` con `file://`):
+### Opción A: un solo archivo (escritorio, doble clic)
+
+`RemoValencia.html` es el juego completo empaquetado en un único archivo
+autocontenido: descárgalo y ábrelo con doble clic en cualquier navegador
+(Chrome, Edge, Firefox…), sin servidor ni instalación. Se regenera con:
+
+```bash
+node build-standalone.mjs
+```
+
+### Opción B: servidor estático (código fuente en módulos)
+
+`index.html` usa módulos ES, así que necesita un servidor estático
+(no funciona con `file://`):
 
 ```bash
 # opción 1
