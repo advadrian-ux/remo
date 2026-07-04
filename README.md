@@ -87,11 +87,22 @@ Y abre <http://localhost:8000>.
 - **Entorno del puerto** (100 % procedural, con texturas detalladas
   generadas en canvas: hormigón con grietas y manchas, cantiles con
   marca de marea, chapa corrugada con desgaste, fachadas con balcones y
-  toldos, casco del buque con óxido, rótulo y línea de flotación…):
-  dársena cerrada navegable con marina y pantalanes, *Veles e Vents*,
-  *Edificio del Reloj*, tinglados, silos, ferry, terminal de
-  contenedores con buque atracado y grúas pórtico, escolleras
-  convergentes con faros rojo/verde, ciudad al norte y gaviotas.
+  toldos, casco del buque con óxido, rótulo y línea de flotación…).
+  Lugares reales recreados con arquitectura reconocible:
+  - **Veles e Vents** con sus losas blancas voladas, columnas esbeltas,
+    vidrio retranqueado y núcleo azul.
+  - **Edificio del Reloj**: ventanas de arco, cadenas de esquina,
+    mansarda de pizarra con buhardillas, torre con reloj y cúpula.
+  - **Tinglados modernistas de 1911** con portones de arco verdes,
+    cenefa de azulejo azul y cubierta curvada.
+  - Las letras rojas de **LA MARINA**, el faro-mirador blanco,
+    pantalanes con veleros y yates, farolas y banderas.
+  - **Playa de la Malvarrosa** al NE con espigón, sombrillas, hamacas
+    y torres de vigilancia.
+  - Terminal de contenedores con **buque "Turia Express"** atracado
+    bajo las grúas pórtico, ferry, silos, escolleras con faros
+    rojo/verde y ciudad del Cabanyal con tejados de teja, cúpula azul
+    y campanario.
 - **Iluminación**: sol direccional con sombras (PCF suave) que siguen
   al bote, tone mapping ACES y niebla atmosférica.
 - **Efectos**: salpicadura y rocío de las palas, estela de espuma,

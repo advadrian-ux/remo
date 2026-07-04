@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>dev · vistas del puerto</title>
+<style>html,body{margin:0;overflow:hidden;background:#000}</style>
+<script type="importmap">{ "imports": { "three": "./js/vendor/three.module.js" } }</script>
+</head>
+<body>
+<script type="module">
+// Página de desarrollo: renderiza la escena desde ?x=&y=&z=&tx=&ty=&tz=
+import * as THREE from 'three';
+import { createWater } from './js/water.js';
+import { createSky, buildEnvironment } from './js/environment.js';
+
+const q = new URLSearchParams(location.search);
+const num = (k, d) => parseFloat(q.get(k) ?? d);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xcfe8f5, 150, 1500);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 6000);
+
+const sunDir = new THREE.Vector3(0.45, 0.55, -0.75).normalize();
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+sun.shadow.camera.near = 50; sun.shadow.camera.far = 650;
+scene.add(sun, sun.target);
+scene.add(new THREE.HemisphereLight(0xbfe0f5, 0x35586b, 0.9));
+
+const sky = createSky(sunDir);
+scene.add(sky);
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.add(createSky(sunDir));
+  scene.environment = pmrem.fromScene(envScene, 0.05).texture;
+  pmrem.dispose();
+}
+const water = createWater(scene.fog, sunDir);
+scene.add(water);
+const updatables = buildEnvironment(scene);
+
+camera.position.set(num('x', 0), num('y', 5), num('z', 0));
+const look = new THREE.Vector3(num('tx', 0), num('ty', 5), num('tz', -100));
+camera.lookAt(look);
+
+sun.position.copy(sunDir).multiplyScalar(300).add(look);
+sun.target.position.copy(look);
+
+function frame(ms) {
+  requestAnimationFrame(frame);
+  const t = ms / 1000;
+  water.updateTime(t); sky.updateTime(t);
+  for (const u of updatables) u.update(t);
+  camera.updateMatrixWorld();
+  water.renderReflection(renderer, scene, camera, []);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

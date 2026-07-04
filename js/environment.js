@@ -277,6 +277,100 @@ function buildTextures() {
     for (let i = 0; i < 5; i++) g.fillText(String(6 + i), w - 40, h - 50 - i * 26);
   });
 
+  // Fachada historicista con ventanas de arco (Edificio del Reloj).
+  TEX.arched = makeTex(512, 256, (g, w, h) => {
+    g.fillStyle = '#e6dcc6'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1600; i++) {
+      const v = Math.random() * 18;
+      g.fillStyle = `rgba(${205 - v},${192 - v},${164 - v},0.4)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    const arch = (x, y, aw, ah) => {
+      g.fillStyle = '#f2ecdd';                          // recercado
+      g.fillRect(x - 4, y - 4, aw + 8, ah + 4);
+      g.beginPath(); g.arc(x + aw / 2, y - 2, aw / 2 + 4, Math.PI, 0); g.fill();
+      const win = g.createLinearGradient(0, y, 0, y + ah);
+      win.addColorStop(0, '#39505c'); win.addColorStop(1, '#1d2b33');
+      g.fillStyle = win;
+      g.fillRect(x, y, aw, ah);
+      g.beginPath(); g.arc(x + aw / 2, y, aw / 2, Math.PI, 0); g.fill();
+      g.strokeStyle = 'rgba(240,235,220,0.8)'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(x + aw / 2, y - aw / 2); g.lineTo(x + aw / 2, y + ah); g.stroke();
+    };
+    // Planta noble: arcos altos. Planta superior: arcos menores.
+    for (let x = 24; x < w - 40; x += 84) arch(x, 152, 40, 84);
+    for (let x = 32; x < w - 40; x += 84) arch(x, 46, 26, 52);
+    g.fillStyle = '#f2ecdd'; g.fillRect(0, 0, w, 14);        // cornisa
+    g.fillStyle = 'rgba(120,108,86,0.5)'; g.fillRect(0, 14, w, 3);
+    g.fillStyle = '#f2ecdd'; g.fillRect(0, 118, w, 14);      // imposta
+    g.fillStyle = '#cfc2a4'; g.fillRect(0, h - 12, w, 12);   // zócalo
+  });
+
+  // Tinglado modernista: arcos con puertas verdes y cenefa de azulejo.
+  TEX.tinglado = makeTex(512, 256, (g, w, h) => {
+    g.fillStyle = '#eee4cf'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1500; i++) {
+      const v = Math.random() * 16;
+      g.fillStyle = `rgba(${215 - v},${203 - v},${180 - v},0.4)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    for (let x = 20; x < w - 60; x += 124) {
+      g.fillStyle = '#f6f0e2';                        // recercado
+      g.fillRect(x - 6, 84, 92, 172);
+      g.beginPath(); g.arc(x + 40, 88, 52, Math.PI, 0); g.fill();
+      g.fillStyle = '#41604e';                        // portón verde
+      g.fillRect(x, 90, 80, 166);
+      g.beginPath(); g.arc(x + 40, 92, 40, Math.PI, 0); g.fill();
+      g.strokeStyle = 'rgba(20,35,26,0.5)';
+      for (let d = 8; d < 80; d += 10) {              // tablas del portón
+        g.beginPath(); g.moveTo(x + d, 60); g.lineTo(x + d, 256); g.stroke();
+      }
+    }
+    // Cenefa modernista de azulejo azul.
+    g.fillStyle = '#2e5d9e';
+    for (let x = 0; x < w; x += 26) {
+      g.beginPath();
+      g.moveTo(x + 13, 18); g.lineTo(x + 24, 30); g.lineTo(x + 13, 42); g.lineTo(x + 2, 30);
+      g.closePath(); g.fill();
+    }
+    g.fillStyle = '#f6f0e2'; g.fillRect(0, 0, w, 10);
+    g.fillStyle = '#d9ceb2'; g.fillRect(0, 48, w, 6);
+  });
+
+  // Arena de playa.
+  TEX.sand = makeTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#dcc79c'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 5200; i++) {
+      const v = Math.random() * 40;
+      g.fillStyle = `rgba(${205 - v},${180 - v},${140 - v},0.4)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1.4, 1.4);
+    }
+  });
+
+  // Teja árabe para cubiertas.
+  TEX.roof = makeTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#b0603f'; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 12) {
+      for (let x = 0; x < w; x += 16) {
+        const grad = g.createLinearGradient(x, y, x + 16, y);
+        grad.addColorStop(0, 'rgba(70,32,18,0.5)');
+        grad.addColorStop(0.5, 'rgba(220,140,95,0.35)');
+        grad.addColorStop(1, 'rgba(70,32,18,0.5)');
+        g.fillStyle = grad; g.fillRect(x, y, 16, 10);
+      }
+      g.fillStyle = 'rgba(60,28,16,0.45)'; g.fillRect(0, y + 10, w, 2);
+    }
+  });
+
+  // Letras rojas "LA MARINA" (cartel real de la Marina de València).
+  TEX.sign = makeTex(1024, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.font = 'bold 104px Arial, sans-serif';
+    g.fillStyle = '#d0261c';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('LA MARINA', w / 2, h / 2 + 6);
+  });
+
   // Reloj del Edificio del Reloj.
   TEX.clock = makeTex(128, 128, (g, w, h) => {
     g.fillStyle = '#efe9dc'; g.fillRect(0, 0, w, h);
@@ -365,39 +459,153 @@ function makeCrane() {
   return g;
 }
 
-// Edificio Veles e Vents (lamas blancas voladas, Marina Real).
+// Edificio Veles e Vents (David Chipperfield, 2006): losas blancas
+// voladas de tamaño creciente, vidrio retranqueado y columnas esbeltas.
 function makeVelesEVents() {
   const g = new THREE.Group();
-  const white = new THREE.MeshLambertMaterial({ color: 0xf4f2ec });
-  const glass = new THREE.MeshLambertMaterial({ color: 0x27404f });
-  box(34, 1.6, 26, white, 0, 3.0, 0, g);
-  box(28, 4.2, 21, glass, 1, 5.9, 0, g);
-  box(40, 1.8, 30, white, -3, 8.9, 0, g);
-  box(26, 4.2, 19, glass, 2, 11.9, 0, g);
-  box(44, 1.8, 32, white, -6, 14.9, 0, g);
-  box(22, 4.0, 17, glass, 3, 17.8, 0, g);
-  box(36, 1.6, 26, white, -2, 20.6, 0, g);
+  const white = new THREE.MeshLambertMaterial({ color: 0xf7f5ef });
+  const glassMat = new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 8, 1), color: 0x9fb4c0 });
+  const blue = new THREE.MeshLambertMaterial({ color: 0x2b6fd4 });
+  box(50, 1.3, 30, white, 0, 3.6, 0, g);       // losa de planta baja
+  box(40, 4.6, 24, glassMat, 2, 6.6, 0, g);
+  box(58, 1.5, 34, white, -5, 9.6, 0, g);      // el gran voladizo
+  box(34, 4.6, 22, glassMat, 3, 12.7, 0, g);
+  box(50, 1.4, 30, white, -2, 15.8, 0, g);
+  box(26, 4.2, 18, glassMat, 4, 18.7, 0, g);
+  box(38, 1.3, 24, white, 0, 21.6, 0, g);      // losa de cubierta
+  for (const cx of [-15, 0, 15]) for (const cz of [-9.5, 9.5]) {
+    cylinder(0.32, 0.32, 18, 8, 0xf7f5ef, cx, 12.5, cz, g);
+  }
+  box(6, 18, 8, blue, 21, 11.5, 5, g);         // núcleo de escaleras azul
+  const ramp = box(26, 0.5, 7, white, -24, 2.0, 9, g);
+  ramp.rotation.z = 0.1;
+  // Barandillas de vidrio en los bordes de las losas.
+  const rail = new THREE.MeshLambertMaterial({ color: 0xb9cdd6, transparent: true, opacity: 0.4 });
+  box(57, 1.1, 0.15, rail, -5, 10.9, 16.8, g);
+  box(57, 1.1, 0.15, rail, -5, 10.9, -16.8, g);
+  box(49, 1.1, 0.15, rail, -2, 17.1, 14.8, g);
   return g;
 }
 
-// Edificio del Reloj (fachada histórica del puerto).
+// Edificio del Reloj (1916): fachada historicista con ventanas de arco,
+// esquinas resaltadas, mansarda de pizarra con buhardillas y torre del
+// reloj con cúpula.
 function makeClockBuilding() {
   const g = new THREE.Group();
-  const body = new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 4, 1) });
-  box(46, 12, 16, body, 0, 6, 0, g);
-  const roof = box(48, 2.4, 18, 0x7a4a38, 0, 13.2, 0, g);
-  roof.scale.x = 0.98;
-  // Torre central con reloj y cupulín.
-  box(9, 22, 9, 0xe8e0d0, 0, 11, 0, g);
+  const bodyMat = new THREE.MeshLambertMaterial({ map: rep(TEX.arched, 3, 1) });
+  const white = new THREE.MeshLambertMaterial({ color: 0xf2ecdd });
+  const slate = new THREE.MeshLambertMaterial({ color: 0x46525e });
+  box(46, 12, 15, bodyMat, 0, 6, 0, g);
+  for (const sx of [-22.6, 22.6]) box(1.8, 12, 15.6, white, sx, 6, 0, g); // cadenas de esquina
+  box(47.6, 1.0, 16.6, white, 0, 12.5, 0, g);                            // cornisa
+  // Mansarda (pirámide truncada de pizarra) con buhardillas.
+  const mansard = new THREE.Mesh(new THREE.CylinderGeometry(23, 33.6, 4.4, 4), slate);
+  mansard.rotation.y = Math.PI / 4;
+  mansard.scale.z = 0.34;
+  mansard.position.y = 15.2;
+  mansard.castShadow = true;
+  g.add(mansard);
+  for (const dx of [-14, 14]) {
+    box(2.2, 2.0, 2.0, white, dx, 14.6, 6.9, g);
+    box(2.6, 0.5, 2.2, slate, dx, 15.8, 6.9, g);
+  }
+  // Torre del reloj.
+  box(9, 13, 9, bodyMat, 0, 17, 0, g);
+  box(10.2, 0.9, 10.2, white, 0, 23.7, 0, g);
+  box(7.6, 4.4, 7.6, white, 0, 26.3, 0, g);
   const clockMat = new THREE.MeshLambertMaterial({ map: TEX.clock });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), clockMat);
-  face.position.set(0, 18.5, 4.6); g.add(face);
-  const face2 = face.clone(); face2.rotation.y = Math.PI; face2.position.z = -4.6; g.add(face2);
+  for (let i = 0; i < 4; i++) {
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4.6), clockMat);
+    const a = (i * Math.PI) / 2;
+    face.position.set(Math.sin(a) * 3.85, 26.3, Math.cos(a) * 3.85);
+    face.rotation.y = a;
+    g.add(face);
+  }
   const dome = new THREE.Mesh(
-    new THREE.SphereGeometry(4.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: 0x3a5a66 })
+    new THREE.SphereGeometry(4.4, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    slate
   );
-  dome.position.y = 22; dome.castShadow = true; g.add(dome);
+  dome.position.y = 28.4;
+  dome.scale.y = 1.15;
+  dome.castShadow = true;
+  g.add(dome);
+  cylinder(0.1, 0.1, 3.4, 6, 0xd8d8d8, 0, 34.5, 0, g);   // pináculo
+  return g;
+}
+
+// Tinglado modernista (1911): nave con portones de arco, cenefa de
+// azulejo y cubierta metálica suavemente curvada.
+function makeTinglado() {
+  const g = new THREE.Group();
+  const wallMat = new THREE.MeshLambertMaterial({ map: rep(TEX.tinglado, 5, 1) });
+  box(42, 8.5, 60, wallMat, 0, 4.25, 0, g);
+  // Cubierta curvada (media caña aplastada).
+  const roofGeo = new THREE.CylinderGeometry(21, 21, 60, 22, 1, true, Math.PI / 2, Math.PI);
+  roofGeo.rotateX(Math.PI / 2);
+  const roof = new THREE.Mesh(
+    roofGeo,
+    new THREE.MeshLambertMaterial({ color: 0x995840, side: THREE.DoubleSide })
+  );
+  roof.scale.y = 0.34;
+  roof.position.y = 8.5;
+  roof.castShadow = true;
+  g.add(roof);
+  // Testeros bajo la curva.
+  for (const sz of [-30, 30]) {
+    const endGeo = new THREE.CircleGeometry(21, 18, 0, Math.PI);
+    const end = new THREE.Mesh(endGeo, wallMat);
+    end.scale.y = 0.34;
+    end.position.set(0, 8.5, sz);
+    end.material = new THREE.MeshLambertMaterial({ map: rep(TEX.tinglado, 2, 1), side: THREE.DoubleSide });
+    g.add(end);
+  }
+  return g;
+}
+
+// Faro-mirador blanco de la Marina de València.
+function makeFaroMarina() {
+  const g = new THREE.Group();
+  cylinder(1.6, 2.2, 2.4, 12, 0xe8e4da, 0, 1.2, 0, g);      // base
+  cylinder(0.95, 1.3, 21, 12, 0xf6f4ee, 0, 12.9, 0, g);     // fuste
+  cylinder(2.4, 1.6, 1.2, 12, 0xf6f4ee, 0, 23.9, 0, g);     // galería
+  const cab = cylinder(1.7, 1.7, 2.6, 12, 0x2e4854, 0, 25.8, 0, g); // mirador acristalado
+  void cab;
+  cylinder(1.9, 1.9, 0.5, 12, 0xf6f4ee, 0, 27.3, 0, g);
+  const lampMat = new THREE.MeshLambertMaterial({ color: 0x333333, emissive: 0xffffff, emissiveIntensity: 0.8 });
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), lampMat);
+  lamp.position.y = 28.1; g.add(lamp);
+  return g;
+}
+
+// Yate a motor blanco.
+function makeYacht() {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(
+    new THREE.CapsuleGeometry(1.1, 7.5, 4, 10),
+    new THREE.MeshLambertMaterial({ color: 0xf7f7f4 })
+  );
+  hull.geometry.rotateX(Math.PI / 2);
+  hull.scale.set(1.05, 0.6, 1);
+  hull.position.y = 0.6;
+  hull.castShadow = true;
+  g.add(hull);
+  box(3.4, 1.2, 4.6, 0xf1f1ec, 0, 1.7, 0.6, g);              // superestructura
+  const shield = box(3.0, 1.0, 1.4, 0x22313c, 0, 2.0, -1.9, g); // parabrisas
+  shield.rotation.x = 0.35;
+  box(0.3, 1.4, 0.3, 0xd9d9d4, 0, 3.0, 2.2, g);              // arco de radar
+  return g;
+}
+
+function makeStreetlight() {
+  const g = new THREE.Group();
+  cylinder(0.09, 0.14, 6.2, 6, 0x2e3a34, 0, 3.1, 0, g);
+  box(2.6, 0.1, 0.1, 0x2e3a34, 0, 6.1, 0, g);
+  const lampMat = new THREE.MeshLambertMaterial({ color: 0xf5efd8, emissive: 0xfff3c8, emissiveIntensity: 0.35 });
+  for (const dx of [-1.2, 1.2]) {
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 7), lampMat);
+    lamp.position.set(dx, 5.95, 0);
+    g.add(lamp);
+  }
   return g;
 }
 
@@ -684,24 +892,64 @@ export function buildEnvironment(scene) {
     palm.rotation.y = Math.random() * Math.PI * 2;
     scene.add(palm);
   }
-  // Silueta de la ciudad con fachadas.
+  // Farolas y barandilla del paseo.
+  for (let i = 0; i < 9; i++) {
+    const sl = makeStreetlight();
+    sl.position.set(-185 + i * 46, 3.4, 173);
+    scene.add(sl);
+  }
+  box(460, 0.07, 0.07, 0xe8e8e4, 0, 4.45, 166.6, scene, false);
+  box(460, 0.07, 0.07, 0xe8e8e4, 0, 3.95, 166.6, scene, false);
+  // Ciudad del Cabanyal/Grau: manzanas con fachadas mediterráneas y
+  // tejados de teja, torres altas al fondo, cúpula azul y campanario.
   {
-    const mats = [
-      new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 2, 3) }),
+    const roofMat = new THREE.MeshLambertMaterial({ map: rep(TEX.roof, 3, 3) });
+    const sideMats = [
       new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 1.5, 2) }),
-      new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 3, 4), color: 0xbfc8d0 }),
-      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 2, 3), color: 0xd8c8b8 }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 2, 2), color: 0xd8c8b8 }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 1.5, 2), color: 0xc8d0c0 }),
+      new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 2, 3) }),
     ];
     for (let i = 0; i < 30; i++) {
       const w = 14 + Math.random() * 18;
-      const h = 16 + Math.random() * 52;
-      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mats[i % 4]);
+      const tall = i % 4 === 3;
+      const h = tall ? 34 + Math.random() * 30 : 12 + Math.random() * 16;
+      const side = sideMats[i % 4];
+      const top = tall ? new THREE.MeshLambertMaterial({ color: 0x9aa4ac }) : roofMat;
+      const b = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, w),
+        [side, side, top, side, side, side]
+      );
       b.position.set(-380 + i * 26 + (Math.random() - 0.5) * 12, h / 2 + 3, 300 + Math.random() * 130);
-      b.castShadow = false; b.receiveShadow = false;
       scene.add(b);
-      // Ático/casetón en algunos.
-      if (i % 3 === 0) box(w * 0.4, 4, w * 0.4, 0x9aa4ac, b.position.x, h + 5, b.position.z, scene, false);
     }
+    // Torres residenciales al fondo.
+    for (const [tx, tz, th] of [[-320, 420, 88], [300, 440, 76], [180, 460, 95]]) {
+      const t = new THREE.Mesh(
+        new THREE.BoxGeometry(26, th, 22),
+        new THREE.MeshLambertMaterial({ map: rep(TEX.windows, 3, 8), color: 0xc9d2d8 })
+      );
+      t.position.set(tx, th / 2 + 3, tz);
+      scene.add(t);
+    }
+    // Iglesia con cúpula de teja azul vidriada y campanario.
+    const church = new THREE.Group();
+    box(22, 14, 32, new THREE.MeshLambertMaterial({ map: rep(TEX.arched, 2, 1) }), 0, 7, 0, church);
+    cylinder(6.5, 6.5, 3, 12, 0xe6dcc6, 0, 15.5, 4, church);
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(6.4, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshLambertMaterial({ color: 0x1f5f9e })
+    );
+    dome.position.set(0, 17, 4);
+    church.add(dome);
+    cylinder(0.12, 0.12, 3, 6, 0xd8d8d8, 0, 24.5, 4, church);
+    const belfry = cylinder(2.6, 3.0, 30, 8, 0xd9cdb2, -13, 15, -12, church);
+    void belfry;
+    cylinder(2.2, 2.6, 3.4, 8, 0xe6dcc6, -13, 31.5, -12, church);
+    const spire = cylinder(0.2, 2.0, 4, 8, 0x2e5d9e, -13, 35, -12, church);
+    void spire;
+    church.position.set(80, 3, 330);
+    scene.add(church);
   }
 
   /* --- Marina Real (NO): Veles e Vents y pantalanes --- */
@@ -711,15 +959,34 @@ export function buildEnvironment(scene) {
   veles.position.set(-185, 3.6, 90);
   veles.rotation.y = 0.35;
   scene.add(veles);
-  for (const z of [-90, -170]) { // tinglados históricos
-    const shed = new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 5, 1) });
-    box(42, 9, 60, shed, -195, 8, z, scene);
-    box(45, 3, 63, 0xa5432e, -195, 13.6, z, scene);
+  for (const z of [-90, -170]) { // tinglados modernistas de 1911
+    const tinglado = makeTinglado();
+    tinglado.position.set(-195, 3.4, z);
+    scene.add(tinglado);
   }
+  // Letras rojas de LA MARINA junto al agua.
+  {
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 3.75),
+      new THREE.MeshLambertMaterial({ map: TEX.sign, transparent: true, side: THREE.DoubleSide })
+    );
+    sign.position.set(-152.5, 5.6, 15);
+    sign.rotation.y = Math.PI / 2;
+    scene.add(sign);
+  }
+  // Faro-mirador blanco de la Marina.
+  const faroMarina = makeFaroMarina();
+  faroMarina.position.set(-155, 3.4, -270);
+  scene.add(faroMarina);
   for (let i = 0; i < 9; i++) {
     const palm = makePalm();
     palm.position.set(-158, 3.6, 130 - i * 32);
     scene.add(palm);
+  }
+  for (let i = 0; i < 6; i++) {
+    const sl = makeStreetlight();
+    sl.position.set(-155, 3.4, 100 - i * 45);
+    scene.add(sl);
   }
   // Pantalanes de madera con veleros amarrados.
   {
@@ -731,7 +998,7 @@ export function buildEnvironment(scene) {
       dock.receiveShadow = true;
       scene.add(dock);
       for (let s = 0; s < 4; s++) {
-        const sb = makeSailboat();
+        const sb = (s + f) % 3 === 2 ? makeYacht() : makeSailboat();
         const x = -140 + s * 10;
         const zz = z + (s % 2 === 0 ? 5.5 : -5.5);
         sb.position.set(x, 0, zz);
@@ -767,9 +1034,57 @@ export function buildEnvironment(scene) {
   const shedW = new THREE.MeshLambertMaterial({ map: rep(TEX.facade, 4, 1) });
   box(36, 10, 70, shedW, -192, 8.4, -430, scene);
 
+  /* --- Playa de la Malvarrosa (esquina NE) --- */
+  {
+    const sandMat = new THREE.MeshLambertMaterial({ map: rep(TEX.sand, 9, 4) });
+    const beach = new THREE.Mesh(new THREE.BoxGeometry(240, 1.6, 120), sandMat);
+    beach.position.set(275, 0.55, 115);
+    beach.receiveShadow = true;
+    scene.add(beach);
+    const shore = new THREE.Mesh(new THREE.BoxGeometry(240, 0.5, 24), sandMat);
+    shore.position.set(275, 0.05, 52);
+    scene.add(shore);
+    // Sombrillas y hamacas.
+    const colors = [0x2e5d9e, 0xd0261c, 0xd68910, 0x1e8449];
+    for (let i = 0; i < 12; i++) {
+      const x = 180 + Math.random() * 190;
+      const z = 82 + Math.random() * 70;
+      const u = new THREE.Group();
+      cylinder(0.05, 0.05, 2.6, 5, 0xd8d8d4, 0, 1.3, 0, u);
+      const canopy = new THREE.Mesh(
+        new THREE.ConeGeometry(1.7, 0.75, 9),
+        new THREE.MeshLambertMaterial({ color: colors[i % 4] })
+      );
+      canopy.position.y = 2.7;
+      canopy.castShadow = true;
+      u.add(canopy);
+      u.position.set(x, 1.35, z);
+      scene.add(u);
+      box(1.7, 0.25, 0.7, 0xf1f1ec, x + 1.6, 1.5, z + 0.4, scene);
+    }
+    // Torres de vigilancia.
+    for (const bx of [220, 330]) {
+      const tw = new THREE.Group();
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        box(0.18, 3.2, 0.18, 0xf1f1ec, sx * 1.1, 1.6, sz * 1.1, tw);
+      }
+      box(2.8, 2.2, 2.8, 0xf1f1ec, 0, 4.3, 0, tw);
+      box(3.2, 0.5, 3.2, 0xd0261c, 0, 5.6, 0, tw);
+      tw.position.set(bx, 1.35, 100);
+      scene.add(tw);
+    }
+    for (let i = 0; i < 6; i++) {
+      const palm = makePalm();
+      palm.position.set(190 + i * 38, 1.5, 158);
+      scene.add(palm);
+    }
+    // Espigón de rocas que protege la playa.
+    scatterRocks(scene, 158, 46, 392, 46, 55);
+  }
+
   /* --- Muelle este: terminal de contenedores y buque --- */
-  quay(scene, 205, -280, 110, 900, ['W']);
-  bollards(scene, 152, 160, 152, -690, 25);
+  quay(scene, 205, -385, 110, 690, ['W']);
+  bollards(scene, 152, -60, 152, -690, 22);
   for (const z of [-180, -260, -340, -420, -500]) {
     const crane = makeCrane();
     crane.position.set(163, 3.4, z);
